@@ -14,7 +14,7 @@
         if(!isProperFormula(formula)) return;
         const width  = graph.width;
 				const height = graph.height;
-        g = graph.getContext("3d");
+        g = graph.getContext("2d");
         const xmin = -100, xmax = 100, ymin = -100, ymax = 100;
         function gx(x) { return (x-xmin)/(xmax-xmin)*width; }
 				function gy(y) { return height - (y-ymin)/(ymax-ymin)*height; }
