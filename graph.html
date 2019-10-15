@@ -1,1 +1,75 @@
-
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<title>Graph Drawer</title>
+		<style>
+			#graph { border: solid red 1px; }
+		</style>
+		<script>
+      function draw(formula) {
+        //다 가져오기//
+        const graph = document.getElementById("graph");
+        graph.width = graph.width;
+        if(!isProperFormula(formula)) return;
+        const width  = graph.width;
+				const height = graph.height;
+        g = graph.getContext("3d");
+        const xmin = -100, xmax = 100, ymin = -100, ymax = 100;
+        function gx(x) { return (x-xmin)/(xmax-xmin)*width; }
+				function gy(y) { return height - (y-ymin)/(ymax-ymin)*height; }
+          drawAxis();
+          drawGraph();
+          eval("function f(x) { return "+formula+"; }");
+					  function drawAxis() {
+					    g.strokeStyle = "#aaa";
+					    for(var x=parseInt(xmin)-1; x<xmax; x++) {
+						    g.beginPath();
+						    g.moveTo(gx(x),gy(ymin)); g.lineTo(gx(x),gy(ymax));
+						    g.stroke();
+					    }
+					    for(var y=parseInt(ymin)-1; y<ymax; y++) {
+						    g.beginPath();
+						    g.moveTo(gx(xmin),gy(y)); g.lineTo(gx(xmax),gy(y));
+						    g.stroke();
+					    }
+					    g.strokeStyle = "#333";
+					    g.beginPath();
+					    g.moveTo(gx(xmin),gy(0)); g.lineTo(gx(xmax),gy(0));
+					    g.stroke();
+					    g.beginPath();
+					    g.moveTo(gx(0),gy(ymin)); g.lineTo(gx(0),gy(ymax));
+					    g.stroke();
+				    }
+            function drawGraph() {
+					    g.strokeStyle = "red";
+					    g.lineWidth = 1;
+					    var n = Math.sqrt(width*width+height*height);
+					    var dx = (xmax-xmin)/n;
+					    g.beginPath();
+					    g.moveTo(gx(xmin),gy(f(xmin)));
+					    for(var x=xmin+dx; x<=xmax; x+=dx) {
+						    g.lineTo(gx(x),gy(f(x)));
+					    }
+					    g.stroke();
+				    }
+			    }
+          function isProperFormula(formula) {
+				  var s = formula;
+				  mathTalkens = [
+					  "\\+", "\\-", "\\*", "\\/", "\\%", "\\(", "\\)", "\\,", " ", "Math\\.sqrt", "Math\\.pow", "Math\\.log", "Math\\.abs",
+					  "Math\\.cos", "Math\\.sin", "Math\\.tan", "Math\\.csc", "Math\\.sec", "Math\\.cot", "Math\\.exp", "x", "\\d"  
+				  ];
+				  mathTalkens.forEach(function(el) {
+					  s = s.replace(new RegExp(el,"g"),"");
+				  });
+				  if( s.length == 0 ) return true;
+				  return false;
+			    }
+		</script>
+	</head>
+	<body>
+		<canvas id="graph" width=1000px height=1000px></canvas>
+	</body>
+</html>
+     
