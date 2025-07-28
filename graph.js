@@ -94,56 +94,166 @@ function draw() {
   const xmin = window.xmin ?? -100, xmax = window.xmax ?? 100, ymin = window.ymin ?? -100, ymax = window.ymax ?? 100;
   const color = document.getElementById('color').value;
   const showGrid = document.getElementById('showGrid').checked;
-  eval("function f(x) { return " + formula + "; }");
+  
+  // 수식이 y에 대한 방정식인지 확인 (예: x^2 + y^2 = 1)
+  const isImplicitEquation = formula.includes('y') && formula.includes('=');
+  
+  if (isImplicitEquation) {
+    // 암시적 방정식 처리 (예: x^2 + y^2 = 1)
+    const parts = formula.split('=');
+    if (parts.length === 2) {
+      const leftSide = parts[0].trim();
+      const rightSide = parts[1].trim();
+      // F(x,y) = leftSide - rightSide = 0 형태로 변환
+      const implicitFormula = `(${leftSide}) - (${rightSide})`;
+      eval("function F(x, y) { return " + implicitFormula + "; }");
+    } else {
+      return; // 잘못된 방정식 형태
+    }
+  } else {
+    // 기존 함수형 방정식 처리 (y = f(x))
+    eval("function f(x) { return " + formula + "; }");
+  }
 
-  function gx(x) { return (x-xmin)/(xmax-xmin)*width; }
-  function gy(y) { return height - (y-ymin)/(ymax-ymin)*height; }
+  // 전체 캔버스를 사용하되 격자는 정사각형 유지
+  const xRange = xmax - xmin;
+  const yRange = ymax - ymin;
+  const canvasAspectRatio = width / height; // 캔버스 비율 (2:1)
+  const coordAspectRatio = xRange / yRange; // 좌표계 비율
+  
+  // 캔버스 전체를 사용하도록 좌표계 범위 조정
+  let adjustedXMin = xmin, adjustedXMax = xmax;
+  let adjustedYMin = ymin, adjustedYMax = ymax;
+  
+  if (canvasAspectRatio > coordAspectRatio) {
+    // 캔버스가 더 넓은 경우: x 범위를 확장
+    const targetXRange = yRange * canvasAspectRatio;
+    const centerX = (xmin + xmax) / 2;
+    adjustedXMin = centerX - targetXRange / 2;
+    adjustedXMax = centerX + targetXRange / 2;
+  } else {
+    // 캔버스가 더 높은 경우: y 범위를 확장
+    const targetYRange = xRange / canvasAspectRatio;
+    const centerY = (ymin + ymax) / 2;
+    adjustedYMin = centerY - targetYRange / 2;
+    adjustedYMax = centerY + targetYRange / 2;
+  }
+  
+  function gx(x) { 
+    return (x - adjustedXMin) / (adjustedXMax - adjustedXMin) * width;
+  }
+  function gy(y) { 
+    return height - (y - adjustedYMin) / (adjustedYMax - adjustedYMin) * height;
+  }
 
   if (showGrid) drawAxis();
   drawGraph();
+
+  // 마우스 이벤트 리스너 추가 (한 번만 추가)
+  if (!graph.hasMouseListener) {
+    graph.hasMouseListener = true;
+    graph.addEventListener('mousemove', function(e) {
+      const rect = graph.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      
+      // 캔버스 좌표를 수학 좌표로 변환 (전체 캔버스 사용)
+      const x = adjustedXMin + (mouseX / width) * (adjustedXMax - adjustedXMin);
+      const y = adjustedYMax - (mouseY / height) * (adjustedYMax - adjustedYMin);
+      
+      // 함수값과 기울기 계산
+      let fx, slope, showTooltipFlag = false;
+      try {
+        if (typeof F === 'function') {
+          // 암시적 방정식의 경우 F(x,y) = 0 값 표시
+          fx = F(x, y);
+          slope = 'N/A';
+          // F(x,y) = 0에 가까운 곳에서만 툴팁 표시
+          showTooltipFlag = Math.abs(fx) < 1.0;
+        } else {
+          // 기존 함수형 방정식
+          fx = f(x);
+          // 기울기 계산 (미분 근사)
+          const h = (xmax - xmin) / 10000; // 작은 증분
+          const fx_plus_h = f(x + h);
+          const fx_minus_h = f(x - h);
+          slope = (fx_plus_h - fx_minus_h) / (2 * h);
+          
+          // 마우스 위치의 y값과 함수값이 가까운 곳에서만 툴팁 표시
+          const tolerance = (ymax - ymin) * 0.05; // 화면 높이의 5% 이내
+          showTooltipFlag = Math.abs(y - fx) < tolerance && isFinite(fx);
+        }
+      } catch {
+        fx = NaN;
+        slope = NaN;
+        showTooltipFlag = false;
+      }
+      
+      // 툴팁 표시/숨기기
+      if (showTooltipFlag) {
+        showTooltip(mouseX, mouseY, x, fx, slope);
+      } else {
+        hideTooltip();
+      }
+    });
+    
+    graph.addEventListener('mouseleave', function() {
+      hideTooltip();
+    });
+  }
 
   function drawAxis() {
     g.save();
     g.strokeStyle = "#eee";
     g.font = "13px Segoe UI, Arial";
     g.fillStyle = "#888";
-    // Calculate step size for grid/labels based on zoom
+    
+    // 격자 간격의 수치값을 동일하게 맞춤
     let xRange = xmax - xmin;
     let yRange = ymax - ymin;
-    let xStep = Math.pow(10, Math.floor(Math.log10(xRange/10)));
-    let yStep = Math.pow(10, Math.floor(Math.log10(yRange/10)));
-    if (xRange/xStep > 20) xStep *= 2;
-    if (yRange/yStep > 20) yStep *= 2;
+    let xStepCandidate = Math.pow(10, Math.floor(Math.log10(xRange/10)));
+    let yStepCandidate = Math.pow(10, Math.floor(Math.log10(yRange/10)));
+    if (xRange/xStepCandidate > 20) xStepCandidate *= 2;
+    if (yRange/yStepCandidate > 20) yStepCandidate *= 2;
+    
+    // 두 축에 동일한 수치 간격 적용 (더 세밀한 것 선택)
+    let step = Math.min(xStepCandidate, yStepCandidate);
+    let xStep = step;
+    let yStep = step;
     // Draw vertical grid lines and x labels
-    for(let x = Math.ceil(xmin/xStep)*xStep; x < xmax; x += xStep) {
+    for(let x = Math.ceil(adjustedXMin/xStep)*xStep; x < adjustedXMax; x += xStep) {
+      // 격자선은 전체 캔버스에 그리기
       g.beginPath();
-      g.moveTo(gx(x), gy(ymin)); g.lineTo(gx(x), gy(ymax));
+      g.moveTo(gx(x), gy(adjustedYMin)); g.lineTo(gx(x), gy(adjustedYMax));
       g.stroke();
-      // Draw x axis numbers, skip 0 (will be drawn on y axis)
-      if (Math.abs(x) > 1e-8) {
+      // Draw x axis numbers if axis is visible and not zero
+      if (Math.abs(x) > 1e-8 && gy(0) >= 0 && gy(0) <= height) {
         g.fillText(x.toFixed(Math.max(0, -Math.floor(Math.log10(xStep)))), gx(x)+2, gy(0)-4);
       }
     }
     // Draw horizontal grid lines and y labels
-    for(let y = Math.ceil(ymin/yStep)*yStep; y < ymax; y += yStep) {
+    for(let y = Math.ceil(adjustedYMin/yStep)*yStep; y < adjustedYMax; y += yStep) {
+      // 격자선은 전체 캔버스에 그리기
       g.beginPath();
-      g.moveTo(gx(xmin), gy(y)); g.lineTo(gx(xmax), gy(y));
+      g.moveTo(gx(adjustedXMin), gy(y)); g.lineTo(gx(adjustedXMax), gy(y));
       g.stroke();
-      // Draw y axis numbers, skip 0 (will be drawn on x axis)
-      if (Math.abs(y) > 1e-8) {
+      // Draw y axis numbers if axis is visible and not zero
+      if (Math.abs(y) > 1e-8 && gx(0) >= 0 && gx(0) <= width) {
         g.fillText(y.toFixed(Math.max(0, -Math.floor(Math.log10(yStep)))), gx(0)+4, gy(y)-2);
       }
     }
     // Draw main axes
     g.strokeStyle = "#333";
     g.beginPath();
-    g.moveTo(gx(xmin), gy(0)); g.lineTo(gx(xmax), gy(0));
+    g.moveTo(gx(adjustedXMin), gy(0)); g.lineTo(gx(adjustedXMax), gy(0));
     g.stroke();
     g.beginPath();
-    g.moveTo(gx(0), gy(ymin)); g.lineTo(gx(0), gy(ymax));
+    g.moveTo(gx(0), gy(adjustedYMin)); g.lineTo(gx(0), gy(adjustedYMax));
     g.stroke();
-    // Draw 0 label at origin
-    g.fillText("0", gx(0)+4, gy(0)-4);
+    // Draw 0 label at origin if visible
+    if (gx(0) >= 0 && gx(0) <= width && gy(0) >= 0 && gy(0) <= height) {
+      g.fillText("0", gx(0)+4, gy(0)-4);
+    }
     g.restore();
   }
 
@@ -151,7 +261,23 @@ function draw() {
     g.save();
     g.strokeStyle = color;
     g.lineWidth = 2;
-    let n = Math.sqrt(width*width+height*height);
+    
+    if (typeof F === 'function') {
+      // 암시적 방정식 그리기 (등고선 방법)
+      drawImplicitGraph();
+    } else {
+      // 기존 함수형 그래프 그리기
+      drawExplicitGraph();
+    }
+    
+    g.restore();
+  }
+  
+  function drawExplicitGraph() {
+    // 해상도를 화면 크기와 줌 레벨 모두 고려하여 동적 조정
+    let baseResolution = Math.sqrt(width*width+height*height);
+    let zoomFactor = Math.max(1, (xmax-xmin)/200); // 기본 범위(200) 대비 줌 비율
+    let n = baseResolution * Math.sqrt(zoomFactor); // 축소시 더 많은 샘플링 포인트
     let dx = (xmax-xmin)/n;
     g.beginPath();
     let first = true;
@@ -185,14 +311,163 @@ function draw() {
       }
     }
     g.stroke();
-    g.restore();
+  }
+  
+  function drawImplicitGraph() {
+    // Marching Squares 알고리즘을 사용한 암시적 방정식 그리기
+    // 줌 레벨에 따라 해상도 동적 조정
+    let baseResolution = 80;
+    let zoomFactor = Math.max(1, Math.max(xmax-xmin, ymax-ymin)/200);
+    const resolution = Math.round(baseResolution * Math.sqrt(zoomFactor)); // 축소시 더 높은 해상도
+    
+    // 가로/세로 격자 길이를 동일하게 맞춤 (정사각형 격자)
+    const xRange = xmax - xmin;
+    const yRange = ymax - ymin;
+    const minRange = Math.min(xRange, yRange);
+    const stepSize = minRange / resolution;
+    
+    const stepX = stepSize;
+    const stepY = stepSize;
+    
+    // 실제 격자 개수 계산
+    const resolutionX = Math.ceil(xRange / stepX);
+    const resolutionY = Math.ceil(yRange / stepY);
+    
+    g.strokeStyle = color;
+    g.lineWidth = 2;
+    
+    // 각 격자점에서 함수값 계산
+    const grid = [];
+    for (let i = 0; i <= resolutionX; i++) {
+      grid[i] = [];
+      for (let j = 0; j <= resolutionY; j++) {
+        const x = xmin + i * stepX;
+        const y = ymin + j * stepY;
+        try {
+          grid[i][j] = F(x, y);
+        } catch {
+          grid[i][j] = NaN;
+        }
+      }
+    }
+    
+    // 각 셀에서 등고선 그리기
+    for (let i = 0; i < resolutionX; i++) {
+      for (let j = 0; j < resolutionY; j++) {
+        const x0 = xmin + i * stepX;
+        const y0 = ymin + j * stepY;
+        const x1 = x0 + stepX;
+        const y1 = y0 + stepY;
+        
+        const f00 = grid[i][j];     // 좌하
+        const f10 = grid[i+1] ? grid[i+1][j] : NaN;   // 우하
+        const f01 = grid[i][j+1];   // 좌상
+        const f11 = grid[i+1] ? grid[i+1][j+1] : NaN; // 우상
+        
+        if (isNaN(f00) || isNaN(f10) || isNaN(f01) || isNaN(f11)) continue;
+        
+        // 각 모서리에서 부호 변화 확인
+        const edges = [];
+        
+        // 하단 모서리 (f00 -> f10)
+        if (f00 * f10 < 0) {
+          const t = Math.abs(f00) / (Math.abs(f00) + Math.abs(f10));
+          edges.push([x0 + t * stepX, y0]);
+        }
+        
+        // 우측 모서리 (f10 -> f11)  
+        if (f10 * f11 < 0) {
+          const t = Math.abs(f10) / (Math.abs(f10) + Math.abs(f11));
+          edges.push([x1, y0 + t * stepY]);
+        }
+        
+        // 상단 모서리 (f11 -> f01)
+        if (f11 * f01 < 0) {
+          const t = Math.abs(f11) / (Math.abs(f11) + Math.abs(f01));
+          edges.push([x1 - t * stepX, y1]);
+        }
+        
+        // 좌측 모서리 (f01 -> f00)
+        if (f01 * f00 < 0) {
+          const t = Math.abs(f01) / (Math.abs(f01) + Math.abs(f00));
+          edges.push([x0, y1 - t * stepY]);
+        }
+        
+        // 교점들을 선으로 연결
+        if (edges.length >= 2) {
+          g.beginPath();
+          g.moveTo(gx(edges[0][0]), gy(edges[0][1]));
+          for (let k = 1; k < edges.length; k++) {
+            g.lineTo(gx(edges[k][0]), gy(edges[k][1]));
+          }
+          g.stroke();
+        }
+      }
+    }
+  }
+}
+
+// 툴팁 표시 함수
+function showTooltip(mouseX, mouseY, x, y, slope) {
+  let tooltip = document.getElementById('graph-tooltip');
+  if (!tooltip) {
+    tooltip = document.createElement('div');
+    tooltip.id = 'graph-tooltip';
+    tooltip.style.cssText = `
+      position: absolute;
+      background: rgba(0,0,0,0.8);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-family: monospace;
+      pointer-events: none;
+      z-index: 1000;
+      white-space: nowrap;
+    `;
+    document.body.appendChild(tooltip);
+  }
+  
+  // 값 포맷팅
+  const xStr = isFinite(x) ? x.toFixed(3) : 'N/A';
+  const yStr = isFinite(y) ? y.toFixed(3) : 'N/A';
+  const slopeStr = isFinite(slope) ? slope.toFixed(3) : 'N/A';
+  
+  tooltip.innerHTML = `
+    x: ${xStr}<br>
+    y: ${yStr}<br>
+    기울기: ${slopeStr}
+  `;
+  
+  // 툴팁 위치 조정 (화면 밖으로 나가지 않도록)
+  const rect = document.getElementById('graph').getBoundingClientRect();
+  let left = rect.left + mouseX + 10;
+  let top = rect.top + mouseY - 10;
+  
+  if (left + tooltip.offsetWidth > window.innerWidth) {
+    left = rect.left + mouseX - tooltip.offsetWidth - 10;
+  }
+  if (top < 0) {
+    top = rect.top + mouseY + 20;
+  }
+  
+  tooltip.style.left = left + 'px';
+  tooltip.style.top = top + 'px';
+  tooltip.style.display = 'block';
+}
+
+// 툴팁 숨기기 함수
+function hideTooltip() {
+  const tooltip = document.getElementById('graph-tooltip');
+  if (tooltip) {
+    tooltip.style.display = 'none';
   }
 }
 
 function isProperFormula(formula) {
   let s = formula;
   const mathTokens = [
-    "\\+", "\\-", "\\*", "\\/", "\\%", "\\(", "\\)", "\\,", " ", "Math\\.sqrt", "Math\\.pow", "Math\\.log", "Math\\.abs",
+    "\\+", "\\-", "\\*", "\\/", "\\%", "\\(", "\\)", "\\,", " ", "\\=", "y", "Math\\.sqrt", "Math\\.pow", "Math\\.log", "Math\\.abs",
     "Math\\.cos", "Math\\.sin", "Math\\.tan", "Math\\.csc", "Math\\.sec", "Math\\.cot", "Math\\.exp", "x", "\\d",
     "Math\\.E", "Math\\.PI", "Math\\.sinh", "Math\\.cosh", "Math\\.tanh", "Math\\.asin", "Math\\.acos", "Math\\.atan",
     "Math\\.asinh", "Math\\.acosh", "Math\\.atanh", "Math\\.floor", "Math\\.ceil", "Math\\.round", "Math\\.min", "Math\\.max", "\\."
