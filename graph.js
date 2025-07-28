@@ -83,6 +83,12 @@ function draw() {
   console.log("Transformed formula:", formula);
   
   const graph = document.getElementById("graph");
+  
+  // 캔버스 크기가 설정되지 않았으면 자동 조정
+  if (graph.width === 0 || graph.height === 0) {
+    resizeCanvas();
+  }
+  
   graph.width = graph.width; // clear canvas
   if (!isProperFormula(formula)) {
     console.log("Formula validation failed");
@@ -138,6 +144,14 @@ function draw() {
     adjustedYMin = centerY - targetYRange / 2;
     adjustedYMax = centerY + targetYRange / 2;
   }
+  
+  // 여백 추가 (각 방향으로 5% 추가 확장)
+  const extraMarginX = (adjustedXMax - adjustedXMin) * 0.05;
+  const extraMarginY = (adjustedYMax - adjustedYMin) * 0.05;
+  adjustedXMin -= extraMarginX;
+  adjustedXMax += extraMarginX;
+  adjustedYMin -= extraMarginY;
+  adjustedYMax += extraMarginY;
   
   function gx(x) { 
     return (x - adjustedXMin) / (adjustedXMax - adjustedXMin) * width;
@@ -278,10 +292,13 @@ function draw() {
     let baseResolution = Math.sqrt(width*width+height*height);
     let zoomFactor = Math.max(1, (xmax-xmin)/200); // 기본 범위(200) 대비 줌 비율
     let n = baseResolution * Math.sqrt(zoomFactor); // 축소시 더 많은 샘플링 포인트
-    let dx = (xmax-xmin)/n;
+    
+    // 조정된 범위 사용 (전체 캔버스를 커버)
+    let dx = (adjustedXMax-adjustedXMin)/n;
     g.beginPath();
     let first = true;
-    for(let x=xmin; x<=xmax; x+=dx) {
+    // 조정된 x 범위를 사용하여 그래프 그리기
+    for(let x=adjustedXMin; x<=adjustedXMax; x+=dx) {
       let y;
       try { y = f(x); } catch { y = NaN; }
       // 클리핑: y가 너무 크면 경계선에 맞춰서 그리기
@@ -290,11 +307,11 @@ function draw() {
         first = true;
         continue;
       }
-      if (y < ymin) {
-        y = ymin;
+      if (y < adjustedYMin) {
+        y = adjustedYMin;
         clipped = true;
-      } else if (y > ymax) {
-        y = ymax;
+      } else if (y > adjustedYMax) {
+        y = adjustedYMax;
         clipped = true;
       }
       if (first) {
@@ -317,12 +334,12 @@ function draw() {
     // Marching Squares 알고리즘을 사용한 암시적 방정식 그리기
     // 줌 레벨에 따라 해상도 동적 조정
     let baseResolution = 80;
-    let zoomFactor = Math.max(1, Math.max(xmax-xmin, ymax-ymin)/200);
+    let zoomFactor = Math.max(1, Math.max(adjustedXMax-adjustedXMin, adjustedYMax-adjustedYMin)/200);
     const resolution = Math.round(baseResolution * Math.sqrt(zoomFactor)); // 축소시 더 높은 해상도
     
     // 가로/세로 격자 길이를 동일하게 맞춤 (정사각형 격자)
-    const xRange = xmax - xmin;
-    const yRange = ymax - ymin;
+    const xRange = adjustedXMax - adjustedXMin;
+    const yRange = adjustedYMax - adjustedYMin;
     const minRange = Math.min(xRange, yRange);
     const stepSize = minRange / resolution;
     
@@ -341,8 +358,8 @@ function draw() {
     for (let i = 0; i <= resolutionX; i++) {
       grid[i] = [];
       for (let j = 0; j <= resolutionY; j++) {
-        const x = xmin + i * stepX;
-        const y = ymin + j * stepY;
+        const x = adjustedXMin + i * stepX;
+        const y = adjustedYMin + j * stepY;
         try {
           grid[i][j] = F(x, y);
         } catch {
@@ -354,8 +371,8 @@ function draw() {
     // 각 셀에서 등고선 그리기
     for (let i = 0; i < resolutionX; i++) {
       for (let j = 0; j < resolutionY; j++) {
-        const x0 = xmin + i * stepX;
-        const y0 = ymin + j * stepY;
+        const x0 = adjustedXMin + i * stepX;
+        const y0 = adjustedYMin + j * stepY;
         const x1 = x0 + stepX;
         const y1 = y0 + stepY;
         
@@ -498,8 +515,31 @@ function pan(dx, dy) {
 }
 function resetView() {
   window.xmin = -100; window.xmax = 100; window.ymin = -100; window.ymax = 100;
+  resizeCanvas();
   draw();
 }
+
+// 캔버스 크기 자동 조정 함수
+function resizeCanvas() {
+  const graph = document.getElementById("graph");
+  const container = document.querySelector(".graph-container");
+  if (!graph || !container) return;
+  
+  // 컨테이너 크기에 맞게 캔버스 크기 조정 (패딩 고려)
+  const rect = container.getBoundingClientRect();
+  const computedStyle = window.getComputedStyle(container);
+  const paddingTop = parseFloat(computedStyle.paddingTop) || 0;
+  const paddingBottom = parseFloat(computedStyle.paddingBottom) || 0;
+  
+  graph.width = rect.width;
+  graph.height = Math.max(rect.height - paddingTop - paddingBottom, 100);
+}
+
+// 창 크기 변경시 캔버스 크기 자동 조정
+window.addEventListener('resize', function() {
+  resizeCanvas();
+  draw();
+});
 
 document.addEventListener('keydown', function(e) {
   if (e.target.tagName === 'INPUT') return;
