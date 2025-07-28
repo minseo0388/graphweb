@@ -1,75 +1,99 @@
 <!DOCTYPE html>
 <html lang="en">
-	<head>
-		<meta charset="UTF-8">
-		<title>Graph Drawer</title>
-		<style>
-			#graph { border: solid red 1px; }
-		</style>
-		<script>
-      function draw(formula) {
-        //다 가져오기//
-        const graph = document.getElementById("graph");
-        graph.width = graph.width;
-        if(!isProperFormula(formula)) return;
-        const width  = graph.width;
-				const height = graph.height;
-        g = graph.getContext("2d");
-        const xmin = -100, xmax = 100, ymin = -100, ymax = 100;
-        function gx(x) { return (x-xmin)/(xmax-xmin)*width; }
-				function gy(y) { return height - (y-ymin)/(ymax-ymin)*height; }
-          drawAxis();
-          drawGraph();
-          eval("function f(x) { return "+formula+"; }");
-					  function drawAxis() {
-					    g.strokeStyle = "#aaa";
-					    for(var x=parseInt(xmin)-1; x<xmax; x++) {
-						    g.beginPath();
-						    g.moveTo(gx(x),gy(ymin)); g.lineTo(gx(x),gy(ymax));
-						    g.stroke();
-					    }
-					    for(var y=parseInt(ymin)-1; y<ymax; y++) {
-						    g.beginPath();
-						    g.moveTo(gx(xmin),gy(y)); g.lineTo(gx(xmax),gy(y));
-						    g.stroke();
-					    }
-					    g.strokeStyle = "#333";
-					    g.beginPath();
-					    g.moveTo(gx(xmin),gy(0)); g.lineTo(gx(xmax),gy(0));
-					    g.stroke();
-					    g.beginPath();
-					    g.moveTo(gx(0),gy(ymin)); g.lineTo(gx(0),gy(ymax));
-					    g.stroke();
-				    }
-            function drawGraph() {
-					    g.strokeStyle = "red";
-					    g.lineWidth = 1;
-					    var n = Math.sqrt(width*width+height*height);
-					    var dx = (xmax-xmin)/n;
-					    g.beginPath();
-					    g.moveTo(gx(xmin),gy(f(xmin)));
-					    for(var x=xmin+dx; x<=xmax; x+=dx) {
-						    g.lineTo(gx(x),gy(f(x)));
-					    }
-					    g.stroke();
-				    }
-			    }
-          function isProperFormula(formula) {
-				  var s = formula;
-				  mathTalkens = [
-					  "\\+", "\\-", "\\*", "\\/", "\\%", "\\(", "\\)", "\\,", " ", "Math\\.sqrt", "Math\\.pow", "Math\\.log", "Math\\.abs",
-					  "Math\\.cos", "Math\\.sin", "Math\\.tan", "Math\\.csc", "Math\\.sec", "Math\\.cot", "Math\\.exp", "x", "\\d"  
-				  ];
-				  mathTalkens.forEach(function(el) {
-					  s = s.replace(new RegExp(el,"g"),"");
-				  });
-				  if( s.length == 0 ) return true;
-				  return false;
-			    }
-		</script>
-	</head>
-	<body>
-		<canvas id="graph" width=1000px height=1000px></canvas>
-	</body>
+<head>
+	<meta charset="UTF-8">
+	<title>Graph Drawer</title>
+	<style>
+		body {
+			background: #f7f7fa;
+			font-family: 'Segoe UI', Arial, sans-serif;
+			margin: 0;
+			padding: 0;
+		}
+		.container {
+			max-width: 1100px;
+			margin: 40px auto;
+			background: #fff;
+			border-radius: 16px;
+			box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+			padding: 32px 32px 24px 32px;
+		}
+		.controls {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 16px;
+			align-items: center;
+			margin-bottom: 18px;
+		}
+		.controls label {
+			font-size: 1.05em;
+			margin-right: 8px;
+		}
+		.controls input[type="text"], .controls input[type="color"] {
+			padding: 4px 8px;
+			border: 1px solid #ccc;
+			border-radius: 4px;
+			font-size: 1em;
+		}
+		.controls input[type="color"] {
+			width: 36px;
+			height: 36px;
+			padding: 0;
+			border: none;
+			background: none;
+		}
+		.controls button {
+			background: #4f8cff;
+			color: #fff;
+			border: none;
+			border-radius: 6px;
+			padding: 7px 16px;
+			font-size: 1em;
+			cursor: pointer;
+			transition: background 0.18s;
+		}
+		.controls button:hover {
+			background: #2563eb;
+		}
+		#graph {
+			border: 2px solid #e0e7ef;
+			border-radius: 10px;
+			background: #fff;
+			box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+			margin-bottom: 10px;
+		}
+		.help {
+			color: #888;
+			font-size: 0.98em;
+			margin-top: 10px;
+		}
+		@media (max-width: 700px) {
+			.container { padding: 10px; }
+			#graph { width: 100% !important; height: 300px !important; }
+			.controls { flex-direction: column; align-items: flex-start; gap: 8px; }
+		}
+	</style>
+</head>
+<body onload="resetView()">
+	<div class="container">
+		<div class="controls">
+			<label>f(x) = <input id="formula" type="text" value="sin(x)" style="width:220px" oninput="draw()"></label>
+			<label>Color: <input id="color" type="color" value="#ff0000" onchange="draw()"></label>
+			<label><input type="checkbox" id="showGrid" checked onchange="draw()"> Show Grid</label>
+			<button onclick="zoom(0.8)">Zoom In</button>
+			<button onclick="zoom(1.25)">Zoom Out</button>
+			<button onclick="pan(-10,0)">←</button>
+			<button onclick="pan(10,0)">→</button>
+			<button onclick="pan(0,10)">↑</button>
+			<button onclick="pan(0,-10)">↓</button>
+			<button onclick="resetView()">Reset</button>
+		</div>
+		<canvas id="graph" width="1000" height="500" tabindex="0" style="outline:none;"></canvas>
+		<div class="help">
+			Use <b>arrow keys</b> to pan, <b>+/-</b> to zoom, <b>0</b> to reset. Enter formula using <code>x</code> and <code>Math.*</code> functions.
+		</div>
+	</div>
+	<script src="graph.js"></script>
+</body>
 </html>
-     
+	 
