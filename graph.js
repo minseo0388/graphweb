@@ -218,9 +218,15 @@ function draw() {
 
   function drawAxis() {
     g.save();
-    g.strokeStyle = "#eee";
+    
+    // Use theme variables for grid and axis colors
+    const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--grid-color').trim() || "#eee";
+    const axisColor = getComputedStyle(document.documentElement).getPropertyValue('--axis-color').trim() || "#333";
+    const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim() || "#888";
+    
+    g.strokeStyle = gridColor;
     g.font = "13px Segoe UI, Arial";
-    g.fillStyle = "#888";
+    g.fillStyle = textColor;
     
     // 격자 간격의 수치값을 동일하게 맞춤
     let xRange = xmax - xmin;
@@ -257,7 +263,7 @@ function draw() {
       }
     }
     // Draw main axes
-    g.strokeStyle = "#333";
+    g.strokeStyle = axisColor;
     g.beginPath();
     g.moveTo(gx(adjustedXMin), gy(0)); g.lineTo(gx(adjustedXMax), gy(0));
     g.stroke();
@@ -430,10 +436,15 @@ function showTooltip(mouseX, mouseY, x, y, slope) {
   if (!tooltip) {
     tooltip = document.createElement('div');
     tooltip.id = 'graph-tooltip';
+    
+    // Get theme variables for tooltip
+    const tooltipBg = getComputedStyle(document.documentElement).getPropertyValue('--tooltip-bg').trim() || "rgba(0,0,0,0.8)";
+    const tooltipText = getComputedStyle(document.documentElement).getPropertyValue('--tooltip-text').trim() || "white";
+    
     tooltip.style.cssText = `
       position: absolute;
-      background: rgba(0,0,0,0.8);
-      color: white;
+      background: ${tooltipBg};
+      color: ${tooltipText};
       padding: 8px 12px;
       border-radius: 4px;
       font-size: 12px;
@@ -441,8 +452,15 @@ function showTooltip(mouseX, mouseY, x, y, slope) {
       pointer-events: none;
       z-index: 1000;
       white-space: nowrap;
+      transition: background 0.3s;
     `;
     document.body.appendChild(tooltip);
+  } else {
+    // Update tooltip colors when theme changes
+    const tooltipBg = getComputedStyle(document.documentElement).getPropertyValue('--tooltip-bg').trim() || "rgba(0,0,0,0.8)";
+    const tooltipText = getComputedStyle(document.documentElement).getPropertyValue('--tooltip-text').trim() || "white";
+    tooltip.style.background = tooltipBg;
+    tooltip.style.color = tooltipText;
   }
   
   // 값 포맷팅

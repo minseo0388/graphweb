@@ -1,0 +1,291 @@
+/* graph.css */
+/* Main styling for the Graph Drawer application */
+
+:root {
+	/* Light Theme (Default) */
+	--bg-color: #f7f7fa;
+	--container-bg: #fff;
+	--container-shadow: rgba(0,0,0,0.08);
+	--border-color: #e0e7ef;
+	--divider-color: #eee;
+	--text-color: #333;
+	--text-muted: #888;
+	--grid-color: #eee;
+	--axis-color: #333;
+	--button-bg: #4f8cff;
+	--button-hover: #2563eb;
+	--button-text: #fff;
+	--tooltip-bg: rgba(0,0,0,0.8);
+	--tooltip-text: white;
+	--canvas-bg: #fff;
+}
+
+.dark-theme {
+	--bg-color: #121212;
+	--container-bg: #1e1e1e;
+	--container-shadow: rgba(0,0,0,0.3);
+	--border-color: #333;
+	--divider-color: #333;
+	--text-color: #e0e0e0;
+	--text-muted: #aaa;
+	--grid-color: #333;
+	--axis-color: #888;
+	--button-bg: #2d5bc4;
+	--button-hover: #3d6ed9;
+	--button-text: #fff;
+	--tooltip-bg: rgba(40,40,40,0.9);
+	--tooltip-text: #e0e0e0;
+	--canvas-bg: #2d2d2d;
+}
+
+.blue-theme {
+	--bg-color: #0f172a;
+	--container-bg: #1e293b;
+	--container-shadow: rgba(0,0,0,0.3);
+	--border-color: #334155;
+	--divider-color: #334155;
+	--text-color: #e2e8f0;
+	--text-muted: #94a3b8;
+	--grid-color: #334155;
+	--axis-color: #94a3b8;
+	--button-bg: #3b82f6;
+	--button-hover: #2563eb;
+	--button-text: #fff;
+	--tooltip-bg: rgba(30,41,59,0.9);
+	--tooltip-text: #e2e8f0;
+	--canvas-bg: #273548;
+}
+
+body {
+	background: var(--bg-color);
+	font-family: 'Segoe UI', Arial, sans-serif;
+	margin: 0;
+	padding: 0;
+	height: 100vh;
+	width: 100vw;
+	overflow: hidden;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	box-sizing: border-box;
+	color: var(--text-color);
+	transition: background 0.3s ease;
+}
+
+.container {
+	width: 95%;
+	max-width: 1200px;
+	max-height: 90vh;
+	background: var(--container-bg);
+	border-radius: 16px;
+	box-shadow: 0 4px 24px var(--container-shadow);
+	padding: 20px;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	margin: 5vh 0;
+	transition: background 0.3s ease, box-shadow 0.3s ease;
+}
+
+.controls {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	align-items: center;
+	margin-bottom: 10px;
+	flex-shrink: 0;
+	padding: 5px 0 10px 0;
+	border-bottom: 1px solid var(--divider-color);
+}
+
+.theme-switch {
+	display: flex;
+	align-items: center;
+	margin-left: auto;
+}
+
+.lang-switch {
+	display: flex;
+	align-items: center;
+	margin-left: 15px;
+}
+
+.lang-option {
+	padding: 3px 8px;
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 0.85em;
+	border: 1px solid var(--border-color);
+	background: var(--container-bg);
+	color: var(--text-color);
+	transition: background 0.2s, transform 0.2s;
+	margin-left: 5px;
+}
+
+.lang-option:hover {
+	transform: scale(1.05);
+	background: var(--border-color);
+}
+
+.lang-option.active {
+	background: var(--button-bg);
+	color: var(--button-text);
+	border-color: var(--button-bg);
+}
+
+.theme-option {
+	width: 25px;
+	height: 25px;
+	border-radius: 50%;
+	cursor: pointer;
+	margin-left: 8px;
+	border: 2px solid transparent;
+	transition: border-color 0.2s, transform 0.2s;
+}
+
+.theme-option:hover {
+	transform: scale(1.1);
+}
+
+.theme-option.active {
+	border-color: var(--button-bg);
+}
+
+.theme-light {
+	background: linear-gradient(135deg, #f7f7fa 50%, #e0e7ef 50%);
+}
+
+.theme-dark {
+	background: linear-gradient(135deg, #1a1a1a 50%, #2d2d2d 50%);
+}
+
+.theme-blue {
+	background: linear-gradient(135deg, #172a45 50%, #1e3a5f 50%);
+}
+
+.controls label {
+	font-size: 1em;
+	margin-right: 5px;
+	color: var(--text-color);
+}
+
+.controls input[type="text"], .controls input[type="color"] {
+	padding: 4px 8px;
+	border: 1px solid var(--border-color);
+	border-radius: 4px;
+	font-size: 1em;
+	background: var(--container-bg);
+	color: var(--text-color);
+}
+
+.controls input[type="checkbox"] {
+	accent-color: var(--button-bg);
+}
+
+.controls input[type="color"] {
+	width: 32px;
+	height: 32px;
+	padding: 0;
+	border: none;
+	background: none;
+}
+
+.controls button {
+	background: var(--button-bg);
+	color: var(--button-text);
+	border: none;
+	border-radius: 6px;
+	padding: 6px 14px;
+	font-size: 0.95em;
+	cursor: pointer;
+	transition: background 0.18s;
+}
+
+.controls button:hover {
+	background: var(--button-hover);
+}
+
+.graph-container {
+	flex-grow: 1;
+	min-height: 0;
+	position: relative;
+	width: 100%;
+	overflow: hidden;
+	padding: 10px 0;
+	margin: 5px 0;
+}
+
+#graph {
+	border: 2px solid var(--border-color);
+	border-radius: 10px;
+	background: var(--canvas-bg);
+	box-shadow: 0 2px 8px var(--container-shadow);
+	display: block;
+	width: 100%;
+	height: 100%;
+	max-height: 100%;
+	transition: background 0.3s ease, border-color 0.3s ease;
+}
+
+.help {
+	color: var(--text-muted);
+	font-size: 0.9em;
+	margin: 10px 0 5px 0;
+	flex-shrink: 0;
+	padding: 5px 0;
+}
+
+.help code {
+	background: var(--border-color);
+	padding: 2px 4px;
+	border-radius: 3px;
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+	.container { 
+		padding: 15px; 
+		width: 100%; 
+		max-width: 100%; 
+		border-radius: 0; 
+		margin: 3vh 0; 
+	}
+	.controls { 
+		flex-direction: column; 
+		align-items: flex-start; 
+		gap: 8px; 
+	}
+	.theme-switch { 
+		margin-left: 0; 
+		margin-top: 10px; 
+	}
+	.lang-switch {
+		margin-left: 0;
+		margin-top: 5px;
+	}
+	.help { 
+		font-size: 0.85em; 
+	}
+	.graph-container { 
+		padding: 5px 0; 
+		margin: 3px 0; 
+	}
+}
+
+@media (max-height: 600px) {
+	.container { 
+		max-height: 94vh; 
+		margin: 3vh 0; 
+	}
+	.controls { 
+		padding-bottom: 5px; 
+		margin-bottom: 5px; 
+		gap: 5px; 
+	}
+	.help { 
+		margin: 5px 0 3px 0; 
+	}
+	.graph-container { 
+		padding: 3px 0; 
+	}
+}
